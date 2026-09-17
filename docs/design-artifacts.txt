@@ -1,0 +1,116 @@
+lab 05a design
+
+==================================================
+struct design
+
+STRUCT:             Student
+MODELS:             a single student's name and their assignment grades.
+LIVES IN:           include/utilities.h (keeps printing.h and grading.h independent).
+FIXED DIMENSION:    number of assignments per student (everyone has the same count).
+VARYING DIMENSION:  number of students on the roster (passed as array length).
+
+FIELDS:
+    - std::string name
+    - double scores[3]
+
+COLLECTION PASSED AS:
+    const Student roster[], int student_count
+
+
+==================================================================================================
+
+signature table & contract changes
+
+FUNCTION:          student_average
+MODULE:            grading
+OLD:               double student_average(const double* const* scores, const int student_index, const int num_assignments)
+NEW:               double student_average(const Student& student, const int num_assignments)
+REASON:            pass Student by const ref so we don't copy the object; pass assignment count by value.
+CONTRACT CHANGES:  precondition shifted from checking student_index bounds to needing a valid Student object.
+
+--------------------------------------------------
+FUNCTION:          assignment_average
+MODULE:            grading
+OLD:               double assignment_average(const double* const* scores, int assignment_index, const int num_students, const int num_assignments)
+NEW:               double assignment_average(const Student roster[], const int num_students, int assignment_index, const int num_assignments)
+REASON:            roster passed as const Student[] since it reads across all students; counts passed by value.
+CONTRACT CHANGES:  same logic, but expects an array of Student objects of size num_students.
+
+--------------------------------------------------
+FUNCTION:          class_average
+MODULE:            grading
+OLD:               double class_average(const double* const* scores, const int num_students, const int num_assignments)
+NEW:               double class_average(const Student roster[], const int num_students, const int num_assignments)
+REASON:            roster passed as const Student[] to average grades across the class without changing data.
+CONTRACT CHANGES:  same promise; inputs updated to Student array.
+
+--------------------------------------------------
+FUNCTION:          find_extremes
+MODULE:            grading
+OLD:               void find_extremes(const double* const* scores, int student_index, const int num_students, const int num_assignments, double& lowest, double& highest)
+NEW:               void find_extremes(const Student& student, const int num_assignments, double& lowest, double& highest)
+REASON:            takes single Student by const ref; outputs lowest/highest via non-const refs.
+CONTRACT CHANGES:  takes one Student record directly instead of full roster + index.
+
+--------------------------------------------------
+FUNCTION:          count_grade
+MODULE:            grading
+OLD:               int count_grade(const double* const* scores, char target, const int num_students, const int num_assignments)
+NEW:               int count_grade(const Student roster[], const int num_students, const int num_assignments, char target)
+REASON:            roster passed as const Student[] to check everyone; letter grade passed by value.
+CONTRACT CHANGES:  same promise; refactored to use Student array.
+
+--------------------------------------------------
+FUNCTION:          has_perfect_score
+MODULE:            grading
+OLD:               bool has_perfect_score(const double* const* scores, int student_index, const int num_students, const int num_assignments)
+NEW:               bool has_perfect_score(const Student& student, const int num_assignments)
+REASON:            narrowed to check one Student by const ref instead of full grid + index.
+CONTRACT CHANGES:  operates on a single student record now.
+
+--------------------------------------------------
+FUNCTION:          is_at_risk
+MODULE:            grading
+OLD:               bool is_at_risk(const double* const* scores, int student_index, const int num_students, const int num_assignments)
+NEW:               bool is_at_risk(const Student& student, const int num_assignments)
+REASON:            takes single Student by const ref to check individual grades.
+CONTRACT CHANGES:  operates on a single student record now.
+
+--------------------------------------------------
+FUNCTION:          print_gradebook
+MODULE:            printing
+OLD:               void print_gradebook(const char* const* names, const double* const* scores, const int num_students, const int num_assignments)
+NEW:               void print_gradebook(const Student roster[], const int num_students, const int num_assignments)
+REASON:            replaces parallel arrays with a single const Student[] roster.
+CONTRACT CHANGES:  same promise; reads from Student array instead of parallel arrays.
+
+
+===================================================================================================
+conversion order plan
+
+dependency map
+ utilities (Student struct)  base module (no dependencies)
+ grading (uses Student)      depends on utilities
+ printing (uses Student)     depends on utilities
+ tests / app                 depend on grading, printing, utilities
+
+step-by-step order
+   1. utilities (include/utilities.h)
+   add Student struct here first so other headers can see it.
+   suite status: green (old code still works).
+
+   2. grading (include/grading.h & src/grading.cpp)
+    update grading functions to use Student.
+    suite status: red (tests and main still call old signatures).
+
+   3. tests/grading_tests.cpp
+    fix grading tests to build Student objects.
+    suite status: green (grading tests pass).
+
+   4. printing (include/printing.h & src/printing.cpp)
+    refactor print_gradebook to take Student roster array.
+    suite status: red (main.cpp still uses old arrays).
+
+   5. app/main.cpp & tests/printing_tests.cpp
+    update main app and printing tests to use Student.
+    suite status: green 
