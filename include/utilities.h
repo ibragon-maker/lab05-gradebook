@@ -5,6 +5,14 @@
 #include <string>
 
 /**
+ * @brief Represents a single student record with their name and assignment scores.
+ */
+struct Student {
+    std::string name;
+    double scores[3];
+};
+
+/**
  * @brief Converts a numeric average into a letter grade.
  *
  * @post No state outside the return value is affected.
